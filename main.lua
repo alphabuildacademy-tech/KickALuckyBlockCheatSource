@@ -10,11 +10,12 @@ local function getRemoteEvent(name)
     return networkFolder:WaitForChild("rev_" .. name, 5)
 end
 
-local KickEventRemote, SpeedUpgradeRemote, BCollectRemote
+local KickEventRemote, SpeedUpgradeRemote, BCollectRemote, RebirthRequestRemote
 local function ensureRemotes()
     if not KickEventRemote then KickEventRemote = getRemoteEvent("KickEvent") end
     if not SpeedUpgradeRemote then SpeedUpgradeRemote = getRemoteEvent("SPEED_UPGRADE") end
     if not BCollectRemote then BCollectRemote = getRemoteEvent("B_Collect") end
+    if not RebirthRequestRemote then RebirthRequestRemote = getRemoteEvent("RebirthRequest") end
 end
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kurbywtww/customui/refs/heads/main/custom.lua"))()
@@ -24,13 +25,17 @@ local antiAFK = false
 local infiniteJump = false
 local autoUpgradeSpeed = false
 local autoCollectMoney = false
+local autoRebirth = false
 
 local autoFarmTask = nil
 local autoUpgradeTask = nil
 local autoCollectTask = nil
+local autoRebirthTask = nil
 local infiniteJumpConn = nil
 local antiAFKConn = nil
 
+local rebirthInterval = 30
+local collectInterval = 7
 local toggles = {}
 
 local function randomWait(min, max)
@@ -99,6 +104,76 @@ local function setupInfiniteJump()
     end)
 end
 
+local function teleportToBase()
+    local char = getCharacter()
+    if not char then return end
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    local plots = workspace:FindFirstChild("Plots")
+    if plots then
+        for _, plot in ipairs(plots:GetChildren()) do
+            if plot:IsA("Model") and plot:GetAttribute("Owner") == LocalPlayer.Name then
+                local spawnPart = plot:FindFirstChild("SpawnPart") or plot:FindFirstChild("Spawn")
+                if spawnPart and spawnPart:IsA("BasePart") then
+                    rootPart.CFrame = spawnPart.CFrame + Vector3.new(0, 3, 0)
+                    return
+                end
+            end
+        end
+    end
+    rootPart.CFrame = CFrame.new(0, 10, 0)
+end
+
+local function teleportToSpeedShop()
+    local char = getCharacter()
+    if not char then return end
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    local speedShop = workspace:FindFirstChild("Shops") and workspace.Shops:FindFirstChild("SpeedShop")
+    if speedShop and speedShop:FindFirstChild("TouchPart") then
+        rootPart.CFrame = speedShop.TouchPart.CFrame + Vector3.new(0, 3, 0)
+    else
+        Library:Notify("Teleport", "Speed shop not found!", 3)
+    end
+end
+
+local function teleportToWeightShop()
+    local char = getCharacter()
+    if not char then return end
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    local weightShop = workspace:FindFirstChild("Shops") and workspace.Shops:FindFirstChild("WeightShop")
+    if weightShop and weightShop:FindFirstChild("TouchPart") then
+        rootPart.CFrame = weightShop.TouchPart.CFrame + Vector3.new(0, 3, 0)
+    else
+        Library:Notify("Teleport", "Weight shop not found!", 3)
+    end
+end
+
+local function teleportToSellStore()
+    local char = getCharacter()
+    if not char then return end
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    local sellNPC = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("SellBrainrot")
+    if sellNPC then
+        local touchPart = sellNPC:FindFirstChild("ProximityPart") or sellNPC:FindFirstChild("TouchPart") or sellNPC:FindFirstChild("Head")
+        if touchPart and touchPart:IsA("BasePart") then
+            rootPart.CFrame = touchPart.CFrame + Vector3.new(0, 3, 0)
+            return
+        end
+    end
+    local timmy = workspace:FindFirstChild("Timmy") or workspace:FindFirstChild("SellBrainrot")
+    if timmy and timmy:IsA("Model") then
+        local touchPart = timmy:FindFirstChild("ProximityPart") or timmy:FindFirstChild("TouchPart") or timmy:FindFirstChild("Head")
+        if touchPart and touchPart:IsA("BasePart") then
+            rootPart.CFrame = touchPart.CFrame + Vector3.new(0, 3, 0)
+            return
+        end
+    end
+    Library:Notify("Teleport", "Sell store not found!", 3)
+end
+
 local function autoUpgradeLoop()
     local lastWarn = 0
     while autoUpgradeSpeed do
@@ -113,23 +188,23 @@ local function autoUpgradeLoop()
         if SpeedUpgradeRemote and coins >= 100 then
             SpeedUpgradeRemote:FireServer(1)
         end
-        randomWait(1, 2)
+        randomWait(1, 1.5)
     end
 end
 
 local function autoFarmLoop()
     while autoFarm do
         local char = waitForCharacter()
-        local humanoid = char:FindFirstChild("Humanoid")
         local rootPart = char:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not rootPart then
-            randomWait(0.5, 1)
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not rootPart or not humanoid then
+            randomWait(0.2, 0.5)
             continue
         end
 
         local kickReady = workspace:FindFirstChild("Areas") and workspace.Areas:FindFirstChild("KickReady")
         if not kickReady then
-            randomWait(2, 3)
+            randomWait(1, 1.2)
             continue
         end
 
@@ -141,25 +216,25 @@ local function autoFarmLoop()
             KickEventRemote:FireServer(1)
         end
 
-        randomWait(2, 3)
-
         local targetPos = kickReady.Position
         humanoid:MoveTo(targetPos)
 
-        while autoFarm and (rootPart.Position - targetPos).Magnitude > 10 do
+        local startTime = tick()
+        while autoFarm and (tick() - startTime) < 15 do
+            if humanoid.MoveDirection.Magnitude < 0.2 then
+                humanoid:MoveTo(targetPos)
+            end
             task.wait(0.2)
             char = getCharacter()
             if not char or not char.Parent then break end
             rootPart = char:FindFirstChild("HumanoidRootPart")
             humanoid = char:FindFirstChild("Humanoid")
             if not rootPart or not humanoid then break end
-            if humanoid.MoveDirection.Magnitude < 0.2 then
-                humanoid:MoveTo(targetPos)
-            end
         end
 
-        if humanoid then humanoid:MoveTo(rootPart.Position) end
-        randomWait(0.5, 1)
+        humanoid:MoveTo(rootPart.Position)
+        rootPart.CFrame = kickReady.CFrame + Vector3.new(0, 5, 0)
+        task.wait(1)
     end
 end
 
@@ -181,15 +256,23 @@ local function autoCollectMoneyLoop()
                 if slotPart:IsA("BasePart") then
                     local slotNum = tonumber((slotPart.Name:gsub("Slot", "")))
                     if slotNum and BCollectRemote then
-                        pcall(function()
-                            BCollectRemote:FireServer(slotNum)
-                        end)
+                        pcall(function() BCollectRemote:FireServer(slotNum) end)
                         randomWait(0.2, 0.5)
                     end
                 end
             end
         end
-        randomWait(5, 10)
+        task.wait(collectInterval)
+    end
+end
+
+local function autoRebirthLoop()
+    while autoRebirth do
+        ensureRemotes()
+        if RebirthRequestRemote then
+            pcall(function() RebirthRequestRemote:FireServer() end)
+        end
+        task.wait(rebirthInterval)
     end
 end
 
@@ -199,10 +282,12 @@ local function resetAllSettings()
     infiniteJump = false
     autoUpgradeSpeed = false
     autoCollectMoney = false
+    autoRebirth = false
 
     if autoFarmTask then task.cancel(autoFarmTask) autoFarmTask = nil end
     if autoUpgradeTask then task.cancel(autoUpgradeTask) autoUpgradeTask = nil end
     if autoCollectTask then task.cancel(autoCollectTask) autoCollectTask = nil end
+    if autoRebirthTask then task.cancel(autoRebirthTask) autoRebirthTask = nil end
     if infiniteJumpConn then infiniteJumpConn:Disconnect() infiniteJumpConn = nil end
     if antiAFKConn then antiAFKConn:Disconnect() antiAFKConn = nil end
 
@@ -211,6 +296,12 @@ local function resetAllSettings()
     if toggles.autoCollectToggle then toggles.autoCollectToggle:Set(false) end
     if toggles.antiAFKToggle then toggles.antiAFKToggle:Set(false) end
     if toggles.infiniteJumpToggle then toggles.infiniteJumpToggle:Set(false) end
+    if toggles.autoRebirthToggle then toggles.autoRebirthToggle:Set(false) end
+
+    collectInterval = 7
+    rebirthInterval = 30
+    if toggles.collectIntervalSlider then toggles.collectIntervalSlider:Set(7) end
+    if toggles.rebirthIntervalSlider then toggles.rebirthIntervalSlider:Set(30) end
 
     Library:Notify("Settings", "All settings have been reset", 3)
 end
@@ -251,12 +342,35 @@ local autoCollectToggle = MainContent:CreateToggle("Auto Collect Money", false, 
 end)
 toggles.autoCollectToggle = autoCollectToggle
 
+local collectIntervalSlider = MainContent:CreateSlider("Collect Interval (seconds)", 2, 20, 7, function(v)
+    collectInterval = v
+end)
+toggles.collectIntervalSlider = collectIntervalSlider
+
+local autoRebirthToggle = MainContent:CreateToggle("Auto Rebirth", false, function(state)
+    autoRebirth = state
+    if autoRebirthTask then task.cancel(autoRebirthTask) end
+    if autoRebirth then autoRebirthTask = task.spawn(autoRebirthLoop) end
+end)
+toggles.autoRebirthToggle = autoRebirthToggle
+
+local rebirthIntervalSlider = MainContent:CreateSlider("Rebirth Interval (seconds)", 10, 120, 30, function(v)
+    rebirthInterval = v
+end)
+toggles.rebirthIntervalSlider = rebirthIntervalSlider
+
 local antiAFKToggle = MainContent:CreateToggle("Anti-AFK", false, function(state)
     antiAFK = state
     if antiAFK then startAntiAFK()
     elseif antiAFKConn then antiAFKConn:Disconnect() end
 end)
 toggles.antiAFKToggle = antiAFKToggle
+
+local teleportSection = MainSub:CreateSection("Teleports")
+teleportSection:CreateButton("Teleport to Base", function() teleportToBase() end)
+teleportSection:CreateButton("Teleport to Speed Shop", function() teleportToSpeedShop() end)
+teleportSection:CreateButton("Teleport to Weight Shop", function() teleportToWeightShop() end)
+teleportSection:CreateButton("Teleport to Sell Store", function() teleportToSellStore() end)
 
 local VisualsSub = VisualsTab:CreateSubTab("Movement", "zap")
 local VisualsContent = VisualsSub:CreateSection("Movement")

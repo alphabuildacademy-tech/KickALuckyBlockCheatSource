@@ -1,3 +1,4 @@
+-- main.lua
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -188,7 +189,7 @@ local function autoUpgradeLoop()
         if SpeedUpgradeRemote and coins >= 100 then
             SpeedUpgradeRemote:FireServer(1)
         end
-        randomWait(1, 1.5)
+        randomWait(1, 2)
     end
 end
 
@@ -198,13 +199,13 @@ local function autoFarmLoop()
         local rootPart = char:FindFirstChild("HumanoidRootPart")
         local humanoid = char:FindFirstChild("Humanoid")
         if not rootPart or not humanoid then
-            randomWait(0.2, 0.5)
+            randomWait(0.5, 1)
             continue
         end
 
         local kickReady = workspace:FindFirstChild("Areas") and workspace.Areas:FindFirstChild("KickReady")
         if not kickReady then
-            randomWait(1, 1.2)
+            randomWait(2, 3)
             continue
         end
 
@@ -220,7 +221,7 @@ local function autoFarmLoop()
         humanoid:MoveTo(targetPos)
 
         local startTime = tick()
-        while autoFarm and (tick() - startTime) < 15 do
+        while autoFarm and (tick() - startTime) < 20 do
             if humanoid.MoveDirection.Magnitude < 0.2 then
                 humanoid:MoveTo(targetPos)
             end

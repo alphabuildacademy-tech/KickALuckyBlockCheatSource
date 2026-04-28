@@ -1,4 +1,3 @@
--- main.lua
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -37,6 +36,7 @@ local antiAFKConn = nil
 
 local rebirthInterval = 30
 local collectInterval = 7
+local walkDuration = 30
 local toggles = {}
 
 local function randomWait(min, max)
@@ -221,7 +221,7 @@ local function autoFarmLoop()
         humanoid:MoveTo(targetPos)
 
         local startTime = tick()
-        while autoFarm and (tick() - startTime) < 20 do
+        while autoFarm and (tick() - startTime) < walkDuration do
             if humanoid.MoveDirection.Magnitude < 0.2 then
                 humanoid:MoveTo(targetPos)
             end
@@ -301,8 +301,10 @@ local function resetAllSettings()
 
     collectInterval = 7
     rebirthInterval = 30
+    walkDuration = 30
     if toggles.collectIntervalSlider then toggles.collectIntervalSlider:Set(7) end
     if toggles.rebirthIntervalSlider then toggles.rebirthIntervalSlider:Set(30) end
+    if toggles.walkDurationSlider then toggles.walkDurationSlider:Set(30) end
 
     Library:Notify("Settings", "All settings have been reset", 3)
 end
@@ -328,6 +330,11 @@ local autoFarmToggle = MainContent:CreateToggle("Auto Farm (Kick)", false, funct
     if autoFarm then autoFarmTask = task.spawn(autoFarmLoop) end
 end)
 toggles.autoFarmToggle = autoFarmToggle
+
+local walkDurationSlider = MainContent:CreateSlider("Walk Duration (seconds)", 20, 100, 30, function(v)
+    walkDuration = v
+end)
+toggles.walkDurationSlider = walkDurationSlider
 
 local autoUpgradeToggle = MainContent:CreateToggle("Auto Upgrade Speed", false, function(state)
     autoUpgradeSpeed = state

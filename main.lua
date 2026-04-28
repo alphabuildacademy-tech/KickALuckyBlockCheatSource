@@ -36,7 +36,8 @@ local antiAFKConn = nil
 
 local rebirthInterval = 30
 local collectInterval = 7
-local walkDuration = 30
+local walkDuration = 50
+local farmRepeatDelay = 0.5
 local toggles = {}
 
 local function randomWait(min, max)
@@ -235,7 +236,7 @@ local function autoFarmLoop()
 
         humanoid:MoveTo(rootPart.Position)
         rootPart.CFrame = kickReady.CFrame + Vector3.new(0, 5, 0)
-        task.wait(1)
+        task.wait(farmRepeatDelay)
     end
 end
 
@@ -302,9 +303,11 @@ local function resetAllSettings()
     collectInterval = 7
     rebirthInterval = 30
     walkDuration = 30
+    farmRepeatDelay = 1
     if toggles.collectIntervalSlider then toggles.collectIntervalSlider:Set(7) end
     if toggles.rebirthIntervalSlider then toggles.rebirthIntervalSlider:Set(30) end
     if toggles.walkDurationSlider then toggles.walkDurationSlider:Set(30) end
+    if toggles.farmRepeatDelaySlider then toggles.farmRepeatDelaySlider:Set(1) end
 
     Library:Notify("Settings", "All settings have been reset", 3)
 end
@@ -335,6 +338,11 @@ local walkDurationSlider = MainContent:CreateSlider("Walk Duration (seconds)", 2
     walkDuration = v
 end)
 toggles.walkDurationSlider = walkDurationSlider
+
+local farmRepeatDelaySlider = MainContent:CreateSlider("Repeat Delay (seconds)", 0.5, 5, 1, function(v)
+    farmRepeatDelay = v
+end)
+toggles.farmRepeatDelaySlider = farmRepeatDelaySlider
 
 local autoUpgradeToggle = MainContent:CreateToggle("Auto Upgrade Speed", false, function(state)
     autoUpgradeSpeed = state
